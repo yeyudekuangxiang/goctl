@@ -2,8 +2,11 @@ package util
 
 import (
 	"bytes"
+	"encoding/json"
+	"github.com/yeyudekuangxiang/goctl/util/ctx"
 	goformat "go/format"
 	"io/ioutil"
+	"path/filepath"
 	"text/template"
 
 	"github.com/yeyudekuangxiang/goctl/internal/errorx"
@@ -38,13 +41,42 @@ func (t *DefaultTemplate) GoFmt(format bool) *DefaultTemplate {
 	return t
 }
 
+func projectInfo(dir string) (*ctx.ProjectContext, error) {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	return ctx.Prepare(abs)
+}
+
 // SaveTo writes the codes to the target path
 func (t *DefaultTemplate) SaveTo(data interface{}, path string, forceUpdate bool) error {
 	if pathx.FileExists(path) && !forceUpdate {
 		return nil
 	}
 
-	output, err := t.Execute(data)
+	data2 := make(map[string]interface{})
+	d, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(d, &data2)
+	if err != nil {
+		return err
+	}
+
+	projectInfo, err := projectInfo(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+
+	data2["projectWorkDir"] = projectInfo.WorkDir
+	data2["projectName"] = projectInfo.Name
+	data2["projectPath"] = projectInfo.Path
+	data2["projectDir"] = projectInfo.Dir
+
+	output, err := t.Execute(data2)
 	if err != nil {
 		return err
 	}
