@@ -3,6 +3,7 @@ package gen
 import (
 	"database/sql"
 	_ "embed"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -13,12 +14,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/zeromicro/go-zero/core/stringx"
 	"github.com/yeyudekuangxiang/goctl/config"
 	"github.com/yeyudekuangxiang/goctl/model/sql/builderx"
 	"github.com/yeyudekuangxiang/goctl/model/sql/parser"
 	"github.com/yeyudekuangxiang/goctl/util/pathx"
+	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stringx"
 )
 
 //go:embed testdata/user.sql
@@ -35,7 +36,7 @@ func TestCacheModel(t *testing.T) {
 	dir := filepath.Join(pathx.MustTempDir(), "./testmodel")
 	cacheDir := filepath.Join(dir, "cache")
 	noCacheDir := filepath.Join(dir, "nocache")
-	g, err := NewDefaultGenerator(cacheDir, &config.Config{
+	g, err := NewDefaultGenerator("testmodel", cacheDir, &config.Config{
 		NamingFormat: "GoZero",
 	})
 	assert.Nil(t, err)
@@ -46,7 +47,7 @@ func TestCacheModel(t *testing.T) {
 		_, err := os.Stat(filepath.Join(cacheDir, "TestUserModel.go"))
 		return err == nil
 	}())
-	g, err = NewDefaultGenerator(noCacheDir, &config.Config{
+	g, err = NewDefaultGenerator("testmodel", noCacheDir, &config.Config{
 		NamingFormat: "gozero",
 	})
 	assert.Nil(t, err)
@@ -73,7 +74,7 @@ func TestNamingModel(t *testing.T) {
 	defer func() {
 		_ = os.RemoveAll(dir)
 	}()
-	g, err := NewDefaultGenerator(camelDir, &config.Config{
+	g, err := NewDefaultGenerator("testmodel", camelDir, &config.Config{
 		NamingFormat: "GoZero",
 	})
 	assert.Nil(t, err)
@@ -84,7 +85,7 @@ func TestNamingModel(t *testing.T) {
 		_, err := os.Stat(filepath.Join(camelDir, "TestUserModel.go"))
 		return err == nil
 	}())
-	g, err = NewDefaultGenerator(snakeDir, &config.Config{
+	g, err = NewDefaultGenerator("testmodel", snakeDir, &config.Config{
 		NamingFormat: "go_zero",
 	})
 	assert.Nil(t, err)
@@ -139,7 +140,7 @@ func Test_genPublicModel(t *testing.T) {
 	err = ioutil.WriteFile(modelFilename, []byte(source), 0o777)
 	require.NoError(t, err)
 
-	g, err := NewDefaultGenerator(modelDir, &config.Config{
+	g, err := NewDefaultGenerator("model", modelDir, &config.Config{
 		NamingFormat: config.DefaultFormat,
 	})
 	require.NoError(t, err)
@@ -153,4 +154,10 @@ func Test_genPublicModel(t *testing.T) {
 	assert.True(t, strings.Contains(code, "TestUserModel interface {\n\t\ttestUserModel\n\t}\n"))
 	assert.True(t, strings.Contains(code, "customTestUserModel struct {\n\t\t*defaultTestUserModel\n\t}\n"))
 	assert.True(t, strings.Contains(code, "func NewTestUserModel(conn sqlx.SqlConn) TestUserModel {"))
+}
+
+func TestModels(t *testing.T) {
+	models := getModels("F:\\code\\go\\src\\gitlab.miotech.com\\miotech-application\\backend\\mp2c-micro\\app\\order\\model")
+	fmt.Println(importModels(models))
+	fmt.Println(newModels(models))
 }

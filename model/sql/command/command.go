@@ -7,9 +7,6 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/spf13/cobra"
-	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/zeromicro/go-zero/core/stores/postgres"
-	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/yeyudekuangxiang/goctl/config"
 	"github.com/yeyudekuangxiang/goctl/model/sql/command/migrationnotes"
 	"github.com/yeyudekuangxiang/goctl/model/sql/gen"
@@ -18,6 +15,9 @@ import (
 	file "github.com/yeyudekuangxiang/goctl/util"
 	"github.com/yeyudekuangxiang/goctl/util/console"
 	"github.com/yeyudekuangxiang/goctl/util/pathx"
+	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/postgres"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 var (
@@ -47,6 +47,8 @@ var (
 	VarStringRemote string
 	// VarStringBranch describes the git branch of the repository.
 	VarStringBranch string
+	// VarAppName 应用名称
+	VarAppName string
 )
 
 var errNotMatched = errors.New("sql not matched")
@@ -63,6 +65,7 @@ func MysqlDDL(_ *cobra.Command, _ []string) error {
 	home := VarStringHome
 	remote := VarStringRemote
 	branch := VarStringBranch
+	appName := VarAppName
 	if len(remote) > 0 {
 		repo, _ := file.CloneIntoGitHome(remote, branch)
 		if len(repo) > 0 {
@@ -77,7 +80,7 @@ func MysqlDDL(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	return fromDDL(src, dir, cfg, cache, idea, database)
+	return fromDDL(appName, src, dir, cfg, cache, idea, database)
 }
 
 // MySqlDataSource generates model code from datasource
@@ -91,6 +94,7 @@ func MySqlDataSource(_ *cobra.Command, _ []string) error {
 	home := VarStringHome
 	remote := VarStringRemote
 	branch := VarStringBranch
+	appName := VarAppName
 	if len(remote) > 0 {
 		repo, _ := file.CloneIntoGitHome(remote, branch)
 		if len(repo) > 0 {
@@ -108,7 +112,7 @@ func MySqlDataSource(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	return fromMysqlDataSource(url, dir, patterns, cfg, cache, idea)
+	return fromMysqlDataSource(appName, url, dir, patterns, cfg, cache, idea)
 }
 
 type pattern map[string]struct{}
@@ -160,6 +164,7 @@ func PostgreSqlDataSource(_ *cobra.Command, _ []string) error {
 	home := VarStringHome
 	remote := VarStringRemote
 	branch := VarStringBranch
+	appName := VarAppName
 	if len(remote) > 0 {
 		repo, _ := file.CloneIntoGitHome(remote, branch)
 		if len(repo) > 0 {
@@ -180,10 +185,10 @@ func PostgreSqlDataSource(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	return fromPostgreSqlDataSource(url, pattern, dir, schema, cfg, cache, idea)
+	return fromPostgreSqlDataSource(appName, url, pattern, dir, schema, cfg, cache, idea)
 }
 
-func fromDDL(src, dir string, cfg *config.Config, cache, idea bool, database string) error {
+func fromDDL(appName string, src, dir string, cfg *config.Config, cache, idea bool, database string) error {
 	log := console.NewConsole(idea)
 	src = strings.TrimSpace(src)
 	if len(src) == 0 {
@@ -199,7 +204,7 @@ func fromDDL(src, dir string, cfg *config.Config, cache, idea bool, database str
 		return errNotMatched
 	}
 
-	generator, err := gen.NewDefaultGenerator(dir, cfg, gen.WithConsoleOption(log))
+	generator, err := gen.NewDefaultGenerator(appName, dir, cfg, gen.WithConsoleOption(log))
 	if err != nil {
 		return err
 	}
@@ -214,7 +219,7 @@ func fromDDL(src, dir string, cfg *config.Config, cache, idea bool, database str
 	return nil
 }
 
-func fromMysqlDataSource(url, dir string, tablePat pattern, cfg *config.Config, cache, idea bool) error {
+func fromMysqlDataSource(appName string, url, dir string, tablePat pattern, cfg *config.Config, cache, idea bool) error {
 	log := console.NewConsole(idea)
 	if len(url) == 0 {
 		log.Error("%v", "expected data source of mysql, but nothing found")
@@ -264,7 +269,7 @@ func fromMysqlDataSource(url, dir string, tablePat pattern, cfg *config.Config, 
 		return errors.New("no tables matched")
 	}
 
-	generator, err := gen.NewDefaultGenerator(dir, cfg, gen.WithConsoleOption(log))
+	generator, err := gen.NewDefaultGenerator(appName, dir, cfg, gen.WithConsoleOption(log))
 	if err != nil {
 		return err
 	}
@@ -272,7 +277,7 @@ func fromMysqlDataSource(url, dir string, tablePat pattern, cfg *config.Config, 
 	return generator.StartFromInformationSchema(matchTables, cache)
 }
 
-func fromPostgreSqlDataSource(url, pattern, dir, schema string, cfg *config.Config, cache, idea bool) error {
+func fromPostgreSqlDataSource(appName, url, pattern, dir, schema string, cfg *config.Config, cache, idea bool) error {
 	log := console.NewConsole(idea)
 	if len(url) == 0 {
 		log.Error("%v", "expected data source of postgresql, but nothing found")
@@ -319,7 +324,7 @@ func fromPostgreSqlDataSource(url, pattern, dir, schema string, cfg *config.Conf
 		return errors.New("no tables matched")
 	}
 
-	generator, err := gen.NewDefaultGenerator(dir, cfg, gen.WithConsoleOption(log), gen.WithPostgreSql())
+	generator, err := gen.NewDefaultGenerator(appName, dir, cfg, gen.WithConsoleOption(log), gen.WithPostgreSql())
 	if err != nil {
 		return err
 	}

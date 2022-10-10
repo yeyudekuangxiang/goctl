@@ -31,6 +31,8 @@ const (
 	updateMethodTemplateFile              = "interface-update.tpl"
 	varTemplateFile                       = "var.tpl"
 	errTemplateFile                       = "err.tpl"
+	repoTemplateFile                      = "repo.tpl"
+	repoGenTemplateFile                   = "repo_gen.tpl"
 )
 
 var templates = map[string]string{

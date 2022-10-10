@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/yeyudekuangxiang/goctl/config"
@@ -24,6 +26,7 @@ const pwd = "."
 
 type (
 	defaultGenerator struct {
+		appName string
 		console.Console
 		// source string
 		dir          string
@@ -55,7 +58,7 @@ type (
 )
 
 // NewDefaultGenerator creates an instance for defaultGenerator
-func NewDefaultGenerator(dir string, cfg *config.Config, opt ...Option) (*defaultGenerator, error) {
+func NewDefaultGenerator(appName string, dir string, cfg *config.Config, opt ...Option) (*defaultGenerator, error) {
 	if dir == "" {
 		dir = pwd
 	}
@@ -178,13 +181,57 @@ func (g *defaultGenerator) createFile(modelList map[string]*codeTuple) error {
 	}
 
 	// generate error file
-	varFilename, err := format.FileNamingFormat(g.cfg.NamingFormat, "vars")
+	varFilename, err := format.FileNamingFormat(g.cfg.NamingFormat, "repo")
 	if err != nil {
 		return err
 	}
 
 	filename := filepath.Join(dirAbs, varFilename+".go")
-	text, err := pathx.LoadTemplate(category, errTemplateFile, template.Error)
+	text, err := pathx.LoadTemplate(category, repoTemplateFile, "")
+	if err != nil {
+		return err
+	}
+
+	err = util.With("repo").Parse(text).SaveTo(map[string]interface{}{
+		"pkg": g.pkg,
+		"app": toCaml(g.appName),
+	}, filename, false)
+	if err != nil {
+		return err
+	}
+
+	// generate error file
+	varFilename, err = format.FileNamingFormat(g.cfg.NamingFormat, "repo_gen")
+	if err != nil {
+		return err
+	}
+
+	filename = filepath.Join(dirAbs, varFilename+".go")
+	text, err = pathx.LoadTemplate(category, repoGenTemplateFile, "")
+	if err != nil {
+		return err
+	}
+
+	models := getModels(dirAbs)
+
+	err = util.With("repo").Parse(text).SaveTo(map[string]interface{}{
+		"pkg":       g.pkg,
+		"app":       toCaml(g.appName),
+		"models":    importModels(models),
+		"newModels": newModels(models),
+	}, filename, false)
+	if err != nil {
+		return err
+	}
+
+	// generate error file
+	varFilename, err = format.FileNamingFormat(g.cfg.NamingFormat, "vars")
+	if err != nil {
+		return err
+	}
+
+	filename = filepath.Join(dirAbs, varFilename+".go")
+	text, err = pathx.LoadTemplate(category, errTemplateFile, template.Error)
 	if err != nil {
 		return err
 	}
@@ -198,6 +245,58 @@ func (g *defaultGenerator) createFile(modelList map[string]*codeTuple) error {
 
 	g.Success("Done.")
 	return nil
+}
+func getModels(modelPath string) []string {
+	list, err := os.ReadDir(modelPath)
+	if err != nil {
+		return nil
+	}
+	models := make([]string, 0)
+	for _, f := range list {
+		if f.IsDir() {
+			continue
+		}
+		if strings.HasSuffix(f.Name(), "model.go") {
+			data, err := ioutil.ReadFile(path.Join(modelPath, f.Name()))
+			if err != nil {
+				console.Error("读取文件内容异常 %s %v", path.Join(modelPath, f.Name()), err)
+				continue
+			}
+			reg := regexp.MustCompile("func New.*?Model")
+			modelFunc := string(reg.Find(data))
+			if len(modelFunc) == 0 {
+				continue
+			}
+			models = append(models, modelFunc[8:])
+		}
+	}
+	return models
+}
+func importModels(models []string) string {
+	str := ""
+	for _, m := range models {
+		str += m + " " + m + "\n"
+	}
+	return str
+}
+func newModels(models []string) string {
+	str := ""
+	for _, m := range models {
+		str += m + ":New" + m + "(db,c)" + ",\n"
+	}
+	if len(str) > 0 {
+		str = strings.Trim(str, "\n")
+	}
+	return str
+}
+func toCaml(str string) string {
+	str = strings.ToLower(str)
+	reg, _ := regexp.Compile("[-_]+([a-z]|/d)")
+
+	str = reg.ReplaceAllStringFunc(str, func(s string) string {
+		return strings.ToUpper(s[len(s)-1:])
+	})
+	return strings.ToUpper(str[:1]) + str[1:]
 }
 
 // ret1: key-table name,value-code

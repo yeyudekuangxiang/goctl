@@ -29,6 +29,8 @@ var (
 	VarStringRemote string
 	// VarStringBranch describes the git branch.
 	VarStringBranch string
+	// VarAppName 应用名称
+	VarAppName string
 )
 
 // Action provides the entry for goctl mongo code generation.
