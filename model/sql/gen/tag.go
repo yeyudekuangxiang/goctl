@@ -16,9 +16,12 @@ func genTag(table Table, in string) (string, error) {
 		return "", err
 	}
 
+	isPk := table.PrimaryKey.Name.Source() == in
 	output, err := util.With("tag").Parse(text).Execute(map[string]interface{}{
-		"field": in,
-		"data":  table,
+		"isPk":            isPk,
+		"isAutoIncrement": isPk && table.PrimaryKey.AutoIncrement,
+		"field":           in,
+		"data":            table,
 	})
 	if err != nil {
 		return "", err
