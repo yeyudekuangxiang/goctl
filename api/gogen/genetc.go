@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/yeyudekuangxiang/goctl/api/spec"
 	"github.com/yeyudekuangxiang/goctl/config"
@@ -19,7 +20,7 @@ const (
 var etcTemplate string
 
 func genEtc(dir string, cfg *config.Config, api *spec.ApiSpec) error {
-	filename, err := format.FileNamingFormat(cfg.NamingFormat, api.Service.Name)
+	filename, err := format.FileNamingFormat(cfg.NamingFormat, strings.TrimSuffix(api.Service.Name, "-api"))
 	if err != nil {
 		return err
 	}
