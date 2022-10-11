@@ -74,7 +74,7 @@ func NewDefaultGenerator(appName string, dir string, cfg *config.Config, opt ...
 		return nil, err
 	}
 
-	generator := &defaultGenerator{dir: dir, cfg: cfg, pkg: pkg}
+	generator := &defaultGenerator{appName: appName, dir: dir, cfg: cfg, pkg: pkg}
 	var optionList []Option
 	optionList = append(optionList, newDefaultOption())
 	optionList = append(optionList, opt...)
@@ -181,32 +181,24 @@ func (g *defaultGenerator) createFile(modelList map[string]*codeTuple) error {
 	}
 
 	// generate error file
-	varFilename, err := format.FileNamingFormat(g.cfg.NamingFormat, "repo")
-	if err != nil {
-		return err
-	}
 
-	filename := filepath.Join(dirAbs, varFilename+".go")
+	filename := filepath.Join(dirAbs, "repo.go")
 	text, err := pathx.LoadTemplate(category, repoTemplateFile, "")
 	if err != nil {
 		return err
 	}
 
 	err = util.With("repo").Parse(text).SaveTo(map[string]interface{}{
-		"pkg": g.pkg,
-		"app": toCaml(g.appName),
+		"pkg":     g.pkg,
+		"appName": toCaml(g.appName),
 	}, filename, false)
 	if err != nil {
 		return err
 	}
 
 	// generate error file
-	varFilename, err = format.FileNamingFormat(g.cfg.NamingFormat, "repo_gen")
-	if err != nil {
-		return err
-	}
 
-	filename = filepath.Join(dirAbs, varFilename+".go")
+	filename = filepath.Join(dirAbs, "repo_gen.go")
 	text, err = pathx.LoadTemplate(category, repoGenTemplateFile, "")
 	if err != nil {
 		return err
@@ -216,16 +208,16 @@ func (g *defaultGenerator) createFile(modelList map[string]*codeTuple) error {
 
 	err = util.With("repo").Parse(text).SaveTo(map[string]interface{}{
 		"pkg":       g.pkg,
-		"app":       toCaml(g.appName),
+		"appName":   toCaml(g.appName),
 		"models":    importModels(models),
 		"newModels": newModels(models),
-	}, filename, false)
+	}, filename, true)
 	if err != nil {
 		return err
 	}
 
 	// generate error file
-	varFilename, err = format.FileNamingFormat(g.cfg.NamingFormat, "vars")
+	varFilename, err := format.FileNamingFormat(g.cfg.NamingFormat, "vars")
 	if err != nil {
 		return err
 	}
@@ -246,12 +238,18 @@ func (g *defaultGenerator) createFile(modelList map[string]*codeTuple) error {
 	g.Success("Done.")
 	return nil
 }
-func getModels(modelPath string) []string {
+
+type repoModel struct {
+	upperName string
+	withCache bool
+}
+
+func getModels(modelPath string) []repoModel {
 	list, err := os.ReadDir(modelPath)
 	if err != nil {
 		return nil
 	}
-	models := make([]string, 0)
+	models := make([]repoModel, 0)
 	for _, f := range list {
 		if f.IsDir() {
 			continue
@@ -262,27 +260,46 @@ func getModels(modelPath string) []string {
 				console.Error("读取文件内容异常 %s %v", path.Join(modelPath, f.Name()), err)
 				continue
 			}
-			reg := regexp.MustCompile("func New.*?Model")
-			modelFunc := string(reg.Find(data))
-			if len(modelFunc) == 0 {
+			cacheReg := regexp.MustCompile("func New.*?Model.*?CacheConf")
+			modelFunc := string(cacheReg.Find(data))
+			if len(modelFunc) > 0 {
+				models = append(models, repoModel{
+					upperName: modelFunc[8:strings.Index(modelFunc, "(")],
+					withCache: true,
+				})
 				continue
 			}
-			models = append(models, modelFunc[8:])
+			reg := regexp.MustCompile("func New.*?Model")
+			modelFunc = string(reg.Find(data))
+			if len(modelFunc) > 0 {
+				models = append(models, repoModel{
+					upperName: modelFunc[8:],
+					withCache: false,
+				})
+				continue
+			}
 		}
 	}
 	return models
 }
-func importModels(models []string) string {
+func importModels(models []repoModel) string {
 	str := ""
 	for _, m := range models {
-		str += m + " " + m + "\n"
+		str += m.upperName + " " + m.upperName + "\n"
+	}
+	if len(str) > 0 {
+		str = strings.Trim(str, "\n")
 	}
 	return str
 }
-func newModels(models []string) string {
+func newModels(models []repoModel) string {
 	str := ""
 	for _, m := range models {
-		str += m + ":New" + m + "(db,c)" + ",\n"
+		if m.withCache {
+			str += m.upperName + ":New" + m.upperName + "(db,c)" + ",\n"
+		} else {
+			str += m.upperName + ":New" + m.upperName + "(db)" + ",\n"
+		}
 	}
 	if len(str) > 0 {
 		str = strings.Trim(str, "\n")
