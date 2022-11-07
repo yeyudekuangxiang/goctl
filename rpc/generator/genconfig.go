@@ -2,14 +2,12 @@ package generator
 
 import (
 	_ "embed"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-
 	conf "github.com/yeyudekuangxiang/goctl/config"
 	"github.com/yeyudekuangxiang/goctl/rpc/parser"
+	"github.com/yeyudekuangxiang/goctl/util"
 	"github.com/yeyudekuangxiang/goctl/util/format"
 	"github.com/yeyudekuangxiang/goctl/util/pathx"
+	"path/filepath"
 )
 
 //go:embed config.tpl
@@ -36,5 +34,5 @@ func (g *Generator) GenConfig(ctx DirContext, _ parser.Proto, cfg *conf.Config) 
 		return err
 	}
 
-	return ioutil.WriteFile(fileName, []byte(text), os.ModePerm)
+	return util.With("config").GoFmt(true).Parse(text).SaveTo(map[string]interface{}{}, fileName, false)
 }
