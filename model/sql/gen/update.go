@@ -63,14 +63,16 @@ func genUpdate(table Table, withCache, postgreSql bool) (
 
 	output, err := util.With("update").Parse(text).Execute(
 		map[string]interface{}{
-			"withCache":             withCache,
-			"containsIndexCache":    table.ContainsUniqueCacheKey,
-			"upperStartCamelObject": camelTableName,
-			"keys":                  strings.Join(keys, "\n"),
-			"keyValues":             strings.Join(keyVars, ", "),
-			"primaryCacheKey":       table.PrimaryCacheKey.DataKeyExpression,
-			"primaryKeyVariable":    table.PrimaryCacheKey.KeyLeft,
-			"lowerStartCamelObject": stringx.From(camelTableName).Untitle(),
+			"withCache":                 withCache,
+			"containsIndexCache":        table.ContainsUniqueCacheKey,
+			"upperStartCamelObject":     camelTableName,
+			"keys":                      strings.Join(keys, "\n"),
+			"keyValues":                 strings.Join(keyVars, ", "),
+			"primaryCacheKey":           table.PrimaryCacheKey.DataKeyExpression,
+			"primaryKeyVariable":        table.PrimaryCacheKey.KeyLeft,
+			"lowerStartCamelObject":     stringx.From(camelTableName).Untitle(),
+			"lowerStartCamelPrimaryKey": util.EscapeGolangKeyword(stringx.From(table.PrimaryKey.Name.ToCamel()).Untitle()),
+			"primaryKeyDataType":        table.PrimaryKey.DataType,
 			"upperStartCamelPrimaryKey": util.EscapeGolangKeyword(
 				stringx.From(table.PrimaryKey.Name.ToCamel()).Title(),
 			),
@@ -96,8 +98,10 @@ func genUpdate(table Table, withCache, postgreSql bool) (
 
 	updateMethodOutput, err := util.With("updateMethod").Parse(text).Execute(
 		map[string]interface{}{
-			"upperStartCamelObject": camelTableName,
-			"data":                  table,
+			"upperStartCamelObject":     camelTableName,
+			"data":                      table,
+			"lowerStartCamelPrimaryKey": util.EscapeGolangKeyword(stringx.From(table.PrimaryKey.Name.ToCamel()).Untitle()),
+			"primaryKeyDataType":        table.PrimaryKey.DataType,
 		},
 	)
 	if err != nil {

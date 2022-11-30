@@ -387,7 +387,7 @@ func (g *defaultGenerator) genModel(in parser.Table, withCache bool) (string, er
 		return "", err
 	}
 
-	ret, err := genFindOneByField(table, withCache, g.isPostgreSql)
+	ret, err := genFindOneByField(table, withCache, false)
 	if err != nil {
 		return "", err
 	}
