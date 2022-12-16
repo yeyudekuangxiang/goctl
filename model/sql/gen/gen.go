@@ -451,11 +451,25 @@ func (g *defaultGenerator) genModelCustom(in parser.Table, withCache bool) (stri
 	t := util.With("model-custom").
 		Parse(text).
 		GoFmt(true)
+	hasCreatedAt := false
+	hasUpdatedAt := false
+	for _, f := range in.Fields {
+		if f.NameOriginal == "created_at" {
+			hasCreatedAt = true
+		}
+		if f.NameOriginal == "updated_at" {
+			hasUpdatedAt = true
+		}
+	}
 	output, err := t.Execute(map[string]interface{}{
-		"pkg":                   g.pkg,
-		"withCache":             withCache,
-		"upperStartCamelObject": in.Name.ToCamel(),
-		"lowerStartCamelObject": stringx.From(in.Name.ToCamel()).Untitle(),
+		"pkg":                       g.pkg,
+		"withCache":                 withCache,
+		"upperStartCamelObject":     in.Name.ToCamel(),
+		"lowerStartCamelObject":     stringx.From(in.Name.ToCamel()).Untitle(),
+		"upperStartCamelPrimaryKey": in.PrimaryKey.Name.ToCamel(),
+		"originPrimaryKey":          in.PrimaryKey.Name.Source(),
+		"hasCreatedAt":              hasCreatedAt,
+		"hasUpdatedAt":              hasUpdatedAt,
 	})
 	if err != nil {
 		return "", err
