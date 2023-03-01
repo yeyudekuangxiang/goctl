@@ -13,7 +13,6 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
-	"github.com/zeromicro/go-zero/core/logx"
 	apiformat "github.com/yeyudekuangxiang/goctl/api/format"
 	"github.com/yeyudekuangxiang/goctl/api/parser"
 	apiutil "github.com/yeyudekuangxiang/goctl/api/util"
@@ -21,6 +20,7 @@ import (
 	"github.com/yeyudekuangxiang/goctl/pkg/golang"
 	"github.com/yeyudekuangxiang/goctl/util"
 	"github.com/yeyudekuangxiang/goctl/util/pathx"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 const tmpFile = "%s-%d"
@@ -31,6 +31,8 @@ var (
 	VarStringDir string
 	// VarStringAPI describes the API.
 	VarStringAPI string
+	// VarStringMiddleware describes the middleware.
+	VarStringMiddleware string
 	// VarStringHome describes the go home.
 	VarStringHome string
 	// VarStringRemote describes the remote git repository.
@@ -45,6 +47,8 @@ var (
 func GoCommand(_ *cobra.Command, _ []string) error {
 	apiFile := VarStringAPI
 	dir := VarStringDir
+	jwtMiddlewareDir := VarStringMiddleware
+
 	namingStyle := VarStringStyle
 	home := VarStringHome
 	remote := VarStringRemote
@@ -66,11 +70,11 @@ func GoCommand(_ *cobra.Command, _ []string) error {
 		return errors.New("missing -dir")
 	}
 
-	return DoGenProject(apiFile, dir, namingStyle)
+	return DoGenProject(apiFile, dir, namingStyle, jwtMiddlewareDir)
 }
 
 // DoGenProject gen go project files with api file
-func DoGenProject(apiFile, dir, style string) error {
+func DoGenProject(apiFile, dir, style, jwtMiddlewareDir string) error {
 	api, err := parser.Parse(apiFile)
 	if err != nil {
 		return err
@@ -96,7 +100,7 @@ func DoGenProject(apiFile, dir, style string) error {
 	logx.Must(genMain(dir, rootPkg, cfg, api))
 	logx.Must(genServiceContext(dir, rootPkg, cfg, api))
 	logx.Must(genTypes(dir, cfg, api))
-	logx.Must(genRoutes(dir, rootPkg, cfg, api))
+	logx.Must(genRoutes(dir, rootPkg, jwtMiddlewareDir, cfg, api))
 	logx.Must(genHandlers(dir, rootPkg, cfg, api))
 	logx.Must(genLogic(dir, rootPkg, cfg, api))
 	logx.Must(genMiddleware(dir, cfg, api))

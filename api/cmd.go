@@ -117,6 +117,7 @@ func init() {
 
 	goCmd.Flags().StringVar(&gogen.VarStringDir, "dir", "", "The target dir")
 	goCmd.Flags().StringVar(&gogen.VarStringAPI, "api", "", "The api file")
+	goCmd.Flags().StringVar(&gogen.VarStringMiddleware, "jwtMiddleware", "", "The global middleware file")
 	goCmd.Flags().StringVar(&gogen.VarStringHome, "home", "", "The goctl home path of "+
 		"the template, --home and --remote cannot be set at the same time, if they are, --remote "+
 		"has higher priority")
@@ -146,6 +147,8 @@ func init() {
 	newCmd.Flags().StringVar(&new.VarStringBranch, "branch", "", "The branch of "+
 		"the remote repo, it does work with --remote")
 	newCmd.Flags().StringVar(&new.VarStringStyle, "style", "gozero", "The file naming format,"+
+		" see [https://github.com/zeromicro/go-zero/blob/master/tools/goctl/config/readme.md]")
+	newCmd.Flags().StringVar(&new.VarStringMiddleware, "jwtMiddleware", "", "The file naming format,"+
 		" see [https://github.com/zeromicro/go-zero/blob/master/tools/goctl/config/readme.md]")
 
 	pluginCmd.Flags().StringVarP(&plugin.VarStringPlugin, "plugin", "p", "", "The plugin file")

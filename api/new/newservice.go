@@ -26,6 +26,8 @@ var (
 	VarStringBranch string
 	// VarStringStyle describes the style of output files.
 	VarStringStyle string
+	// VarStringMiddleware describes the middleware.
+	VarStringMiddleware string
 )
 
 // CreateServiceCommand fast create service
@@ -82,6 +84,6 @@ func CreateServiceCommand(args []string) error {
 		return err
 	}
 
-	err = gogen.DoGenProject(apiFilePath, abs, VarStringStyle)
+	err = gogen.DoGenProject(apiFilePath, abs, VarStringStyle, VarStringMiddleware)
 	return err
 }

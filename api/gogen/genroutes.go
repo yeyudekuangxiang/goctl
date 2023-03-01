@@ -9,12 +9,12 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/zeromicro/go-zero/core/collection"
 	"github.com/yeyudekuangxiang/goctl/api/spec"
 	"github.com/yeyudekuangxiang/goctl/config"
 	"github.com/yeyudekuangxiang/goctl/util/format"
 	"github.com/yeyudekuangxiang/goctl/util/pathx"
 	"github.com/yeyudekuangxiang/goctl/vars"
+	"github.com/zeromicro/go-zero/core/collection"
 )
 
 const (
@@ -72,7 +72,7 @@ type (
 	}
 )
 
-func genRoutes(dir, rootPkg string, cfg *config.Config, api *spec.ApiSpec) error {
+func genRoutes(dir, rootPkg, jwtMiddlePath string, cfg *config.Config, api *spec.ApiSpec) error {
 	var builder strings.Builder
 	groups, err := getRoutes(api)
 	if err != nil {
@@ -86,6 +86,7 @@ func genRoutes(dir, rootPkg string, cfg *config.Config, api *spec.ApiSpec) error
 
 	var hasTimeout bool
 	gt := template.Must(template.New("groupTemplate").Parse(templateText))
+	hasJwtMiddleware := false
 	for _, g := range groups {
 		var gbuilder strings.Builder
 		gbuilder.WriteString("[]rest.Route{")
@@ -99,9 +100,14 @@ func genRoutes(dir, rootPkg string, cfg *config.Config, api *spec.ApiSpec) error
 				r.method, r.path, r.handler)
 		}
 
-		var jwt string
+		var jwt, jwtMiddleware string
+
 		if g.jwtEnabled {
-			jwt = fmt.Sprintf("\n rest.WithJwt(serverCtx.Config.%s.AccessSecret),", g.authName)
+			if i := strings.Index(g.authName, ":"); i != -1 {
+				jwtMiddleware = fmt.Sprintf("middleware.%sMiddleware(serverCtx.Config.%s.AccessSecret)", g.authName[:i], g.authName[i+1:])
+			} else {
+				jwt = fmt.Sprintf("\n rest.WithJwt(serverCtx.Config.%s.AccessSecret),", g.authName)
+			}
 		}
 		if len(g.jwtTrans) > 0 {
 			jwt = jwt + fmt.Sprintf("\n rest.WithJwtTransition(serverCtx.Config.%s.PrevSecret,serverCtx.Config.%s.Secret),", g.jwtTrans, g.jwtTrans)
@@ -139,13 +145,28 @@ rest.WithPrefix("%s"),`, g.prefix)
 				params[i] = "serverCtx." + params[i]
 			}
 			middlewareStr := strings.Join(params, ", ")
-			routes = fmt.Sprintf("rest.WithMiddlewares(\n[]rest.Middleware{ %s }, \n %s \n),",
-				middlewareStr, strings.TrimSpace(gbuilder.String()))
+			if jwtMiddleware != "" {
+				routes = fmt.Sprintf("rest.WithMiddlewares(\n[]rest.Middleware{%s, %s }, \n %s \n),",
+					jwtMiddleware, middlewareStr, strings.TrimSpace(gbuilder.String()))
+			} else {
+				routes = fmt.Sprintf("rest.WithMiddlewares(\n[]rest.Middleware{ %s }, \n %s \n),",
+					middlewareStr, strings.TrimSpace(gbuilder.String()))
+			}
 		} else {
-			gbuilder.WriteString("\n},")
-			routes = strings.TrimSpace(gbuilder.String())
+			if jwtMiddleware != "" {
+				gbuilder.WriteString("\n}...,")
+				routes = fmt.Sprintf("rest.WithMiddlewares(\n[]rest.Middleware{%s}, \n %s \n),",
+					jwtMiddleware, strings.TrimSpace(gbuilder.String()))
+			} else {
+				gbuilder.WriteString("\n},")
+				routes = strings.TrimSpace(gbuilder.String())
+			}
 		}
 
+		if jwtMiddleware != "" {
+			jwt = ""
+			hasJwtMiddleware = true
+		}
 		if err := gt.Execute(&builder, map[string]string{
 			"routes":    routes,
 			"jwt":       jwt,
@@ -175,9 +196,11 @@ rest.WithPrefix("%s"),`, g.prefix)
 		templateFile:    routesTemplateFile,
 		builtinTemplate: routesTemplate,
 		data: map[string]interface{}{
-			"hasTimeout":      hasTimeout,
-			"importPackages":  genRouteImports(rootPkg, api),
-			"routesAdditions": strings.TrimSpace(builder.String()),
+			"hasTimeout":        hasTimeout,
+			"importPackages":    genRouteImports(rootPkg, api),
+			"routesAdditions":   strings.TrimSpace(builder.String()),
+			"jwtMiddlewarePath": jwtMiddlePath,
+			"hasJwtMiddleware":  hasJwtMiddleware,
 		},
 	})
 }
