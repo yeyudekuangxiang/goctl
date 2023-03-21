@@ -28,9 +28,7 @@ type ProjectContext struct {
 // where can be found the project path and the project module,
 func Prepare(workDir string) (*ProjectContext, error) {
 	ctx, err := background(workDir)
-	if err == nil {
-		return ctx, nil
-	}
+	return ctx, err
 
 	name := filepath.Base(workDir)
 	_, err = execx.Run("go mod init "+name, workDir)
