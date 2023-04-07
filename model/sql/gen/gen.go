@@ -285,10 +285,11 @@ func getModels(modelPath string) []repoModel {
 func importModels(models []repoModel) string {
 	str := ""
 	for _, m := range models {
-		str += m.upperName + " " + m.upperName + "\n"
+		str += "    " + m.upperName + " " + m.upperName + "\n"
 	}
 	if len(str) > 0 {
 		str = strings.Trim(str, "\n")
+		str = strings.TrimLeft(str, " ")
 	}
 	return str
 }
@@ -296,13 +297,14 @@ func newModels(models []repoModel) string {
 	str := ""
 	for _, m := range models {
 		if m.withCache {
-			str += m.upperName + ":New" + m.upperName + "(db,c)" + ",\n"
+			str += "        " + m.upperName + ":New" + m.upperName + "(db,c)" + ",\n"
 		} else {
-			str += m.upperName + ":New" + m.upperName + "(db)" + ",\n"
+			str += "        " + m.upperName + ":New" + m.upperName + "(db)" + ",\n"
 		}
 	}
 	if len(str) > 0 {
 		str = strings.Trim(str, "\n")
+		str = strings.TrimLeft(str, " ")
 	}
 	return str
 }
