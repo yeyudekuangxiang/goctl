@@ -69,6 +69,7 @@ func genUpdate(table Table, withCache, postgreSql bool) (
 			"keys":                      strings.Join(keys, "\n"),
 			"keyValues":                 strings.Join(keyVars, ", "),
 			"primaryCacheKey":           table.PrimaryCacheKey.DataKeyExpression,
+			"varLeft":                   table.PrimaryCacheKey.VarLeft,
 			"primaryKeyVariable":        table.PrimaryCacheKey.KeyLeft,
 			"lowerStartCamelObject":     stringx.From(camelTableName).Untitle(),
 			"lowerStartCamelPrimaryKey": util.EscapeGolangKeyword(stringx.From(table.PrimaryKey.Name.ToCamel()).Untitle()),
