@@ -240,8 +240,9 @@ func (g *defaultGenerator) createFile(modelList map[string]*codeTuple) error {
 }
 
 type repoModel struct {
-	upperName string
-	withCache bool
+	upperName  string
+	withCache  bool
+	hasOptions bool
 }
 
 func getModels(modelPath string) []repoModel {
@@ -260,23 +261,29 @@ func getModels(modelPath string) []repoModel {
 				console.Error("读取文件内容异常 %s %v", path.Join(modelPath, f.Name()), err)
 				continue
 			}
+			m := repoModel{}
 			cacheReg := regexp.MustCompile("func New.*?Model.*?CacheConf")
 			modelFunc := string(cacheReg.Find(data))
 			if len(modelFunc) > 0 {
-				models = append(models, repoModel{
-					upperName: modelFunc[8:strings.Index(modelFunc, "(")],
-					withCache: true,
-				})
-				continue
+				m.upperName = modelFunc[8:strings.Index(modelFunc, "(")]
+				m.withCache = true
+
+			} else {
+				reg := regexp.MustCompile("func New.*?Model")
+				modelFunc = string(reg.Find(data))
+				if len(modelFunc) > 0 {
+					m.upperName = modelFunc[8:]
+					m.withCache = false
+				}
 			}
-			reg := regexp.MustCompile("func New.*?Model")
-			modelFunc = string(reg.Find(data))
+
+			optReg := regexp.MustCompile("func New.*?Model.*?modelOption")
+			modelFunc = string(optReg.Find(data))
 			if len(modelFunc) > 0 {
-				models = append(models, repoModel{
-					upperName: modelFunc[8:],
-					withCache: false,
-				})
-				continue
+				m.hasOptions = true
+			}
+			if m.upperName != "" {
+				models = append(models, m)
 			}
 		}
 	}
@@ -297,9 +304,14 @@ func newModels(models []repoModel) string {
 	str := ""
 	for _, m := range models {
 		if m.withCache {
-			str += "        " + m.upperName + ":New" + m.upperName + "(db,c)" + ",\n"
+			str += "        " + m.upperName + ":New" + m.upperName + "(db,c"
 		} else {
-			str += "        " + m.upperName + ":New" + m.upperName + "(db)" + ",\n"
+			str += "        " + m.upperName + ":New" + m.upperName + "(db"
+		}
+		if m.hasOptions {
+			str += ",opts...),\n"
+		} else {
+			str += "),\n"
 		}
 	}
 	if len(str) > 0 {
